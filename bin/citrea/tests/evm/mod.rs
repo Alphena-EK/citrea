@@ -1,6 +1,7 @@
 use std::net::SocketAddr;
 use std::str::FromStr;
 
+use alloy::consensus::constants::KECCAK_EMPTY;
 use alloy::signers::local::PrivateKeySigner;
 use alloy::signers::Signer;
 use citrea_common::SequencerConfig;
@@ -10,6 +11,7 @@ use citrea_evm::system_contracts::BitcoinLightClient;
 use citrea_stf::genesis_config::GenesisPaths;
 use reth_primitives::{Address, BlockId, BlockNumberOrTag, Bytes, U256};
 use sov_rollup_interface::CITREA_VERSION;
+use sov_state::KeyHash;
 
 // use sov_demo_rollup::initialize_logging;
 use crate::test_client::TestClient;
@@ -156,6 +158,7 @@ async fn test_eth_get_logs() -> Result<(), anyhow::Error> {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_genesis_contract_call() -> Result<(), Box<dyn std::error::Error>> {
+    // citrea::initialize_logging(::tracing::Level::INFO);
     let (seq_port_tx, seq_port_rx) = tokio::sync::oneshot::channel();
 
     let storage_dir = tempdir_with_children(&["DA", "sequencer", "full-node"]);
@@ -204,13 +207,12 @@ async fn test_genesis_contract_call() -> Result<(), Box<dyn std::error::Error>> 
     let expected_res = "0x000000000000000000000000deaddeaddeaddeaddeaddeaddeaddeaddeaddead";
     assert_eq!(res, expected_res);
 
+    let contract_field =
+        U256::from_str("0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc")
+            .unwrap();
+
     let storage_value = seq_test_client
-        .eth_get_storage_at(
-            contract_address,
-            U256::from_str("0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc")
-                .unwrap(),
-            None,
-        )
+        .eth_get_storage_at(contract_address, contract_field, None)
         .await
         .unwrap();
     assert_eq!(
@@ -218,6 +220,82 @@ async fn test_genesis_contract_call() -> Result<(), Box<dyn std::error::Error>> 
         U256::from_str("0x0000000000000000000000003200000000000000000000000000000000000001")
             .unwrap()
     );
+
+    let acc_zkproof = seq_test_client
+        .eth_get_proof(contract_address, vec![contract_field], None)
+        .await
+        .unwrap();
+    {
+        // Verify proof:
+        let expected_root_hash = acc_zkproof.storage_hash.0.into();
+
+        // construct account key/values to be verified
+        let account_key = [b"Evm/a/\x14", contract_address.as_slice()].concat();
+        let account_hash = KeyHash::with::<sha2::Sha256>(account_key.clone());
+        let proved_account = if acc_zkproof.account_proof[1] == Bytes::from("y") {
+            // Account exists and it's serialized form is:
+            let code_hash_bytes = if acc_zkproof.code_hash != KECCAK_EMPTY {
+                // 1 for Some and 32 for length
+                [&[1, 32], acc_zkproof.code_hash.0.as_slice()].concat()
+            } else {
+                // 0 for None
+                vec![0]
+            };
+            let bytes = [
+                &[32], // balance length
+                acc_zkproof.balance.as_le_slice(),
+                &acc_zkproof.nonce.to_le_bytes(),
+                &code_hash_bytes,
+            ]
+            .concat();
+            Some(bytes)
+        } else {
+            // Account does not exist
+            None
+        };
+
+        let acc_proof: jmt::proof::SparseMerkleProof<sha2::Sha256> =
+            borsh::from_slice(&acc_zkproof.account_proof[0]).unwrap();
+
+        acc_proof
+            .verify(expected_root_hash, account_hash, proved_account)
+            .expect("Account proof must be valid");
+
+        for storage_proof in acc_zkproof.storage_proof {
+            let storage_key = [
+                b"Evm/s/",
+                acc_zkproof.address.as_slice(),
+                &[32],
+                U256::from_le_slice(storage_proof.key.0.as_slice())
+                    .to_be_bytes::<32>()
+                    .as_slice(),
+            ]
+            .concat();
+            let key_hash = KeyHash::with::<sha2::Sha256>(storage_key.clone());
+
+            let proved_value = if storage_proof.proof[1] == Bytes::from("y") {
+                // Storage value exists and it's serialized form is:
+                let bytes = [&[32], storage_proof.value.to_be_bytes::<32>().as_slice()].concat();
+                Some(bytes)
+            } else {
+                // Storage value does not exist
+                None
+            };
+
+            if U256::from_le_slice(storage_proof.key.0.as_slice()) == contract_field {
+                // A sanity check to verify we deal with the same value.
+                // This check is not actually required, it's for test purposes only
+                assert_eq!(storage_proof.value, storage_value);
+            }
+
+            let storage_proof: jmt::proof::SparseMerkleProof<sha2::Sha256> =
+                borsh::from_slice(&storage_proof.proof[0]).unwrap();
+
+            storage_proof
+                .verify(expected_root_hash, key_hash, proved_value)
+                .expect("Account storage proof must be valid");
+        }
+    }
 
     seq_task.abort();
     Ok(())

@@ -17,7 +17,7 @@ use jsonrpsee::rpc_params;
 use jsonrpsee::ws_client::{PingConfig, WsClient, WsClientBuilder};
 use reth_primitives::{Address, BlockId, BlockNumberOrTag, Bytes, TxHash, TxKind, B256, U256, U64};
 use reth_rpc_types::trace::geth::{GethDebugTracingOptions, GethTrace};
-use reth_rpc_types::RichBlock;
+use reth_rpc_types::{EIP1186AccountProofResponse, RichBlock};
 use sequencer_client::GetSoftConfirmationResponse;
 use sov_ledger_rpc::client::RpcClient;
 use sov_ledger_rpc::HexHash;
@@ -487,6 +487,18 @@ impl TestClient {
             .await
             .unwrap();
         eth_logs
+    }
+
+    pub(crate) async fn eth_get_proof(
+        &self,
+        address: Address,
+        keys: Vec<U256>,
+        block_number: Option<BlockNumberOrTag>,
+    ) -> Result<EIP1186AccountProofResponse, Box<dyn std::error::Error>> {
+        self.http_client
+            .request("eth_getProof", rpc_params![address, keys, block_number])
+            .await
+            .map_err(|e| e.into())
     }
 
     #[allow(clippy::extra_unused_type_parameters)]

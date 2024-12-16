@@ -1726,6 +1726,7 @@ dependencies = [
  "clap",
  "ethereum-rpc",
  "hex",
+ "jmt",
  "jsonrpsee",
  "lazy_static",
  "log",
