@@ -140,8 +140,15 @@ where
             &address,
             evm.accounts.codec().key_codec(),
         );
+
         let account_proof = working_set.get_with_proof(account_key, version);
-        let account_proof = borsh::to_vec(&account_proof).expect("Serialization shouldn't fail");
+        let account_exists = if account_proof.value.is_some() {
+            Bytes::from("y")
+        } else {
+            Bytes::from("n")
+        };
+        let account_proof =
+            borsh::to_vec(&account_proof.proof).expect("Serialization shouldn't fail");
         let account_proof = Bytes::from(account_proof);
 
         let db_account = DbAccount::new(address);
@@ -154,12 +161,17 @@ where
             );
             let value = db_account.storage.get(&key, working_set);
             let proof = working_set.get_with_proof(storage_key, version);
+            let value_exists = if proof.value.is_some() {
+                Bytes::from("y")
+            } else {
+                Bytes::from("n")
+            };
             let value_proof = borsh::to_vec(&proof.proof).expect("Serialization shouldn't fail");
             let value_proof = Bytes::from(value_proof);
             storage_proof.push(EIP1186StorageProof {
-                key: JsonStorageKey(key.into()),
+                key: JsonStorageKey(key.to_le_bytes().into()),
                 value: value.unwrap_or_default(),
-                proof: vec![value_proof],
+                proof: vec![value_proof, value_exists],
             });
         }
 
@@ -169,7 +181,7 @@ where
             nonce,
             code_hash,
             storage_hash: root_hash.0.into(),
-            account_proof: vec![account_proof],
+            account_proof: vec![account_proof, account_exists],
             storage_proof,
         })
     }
