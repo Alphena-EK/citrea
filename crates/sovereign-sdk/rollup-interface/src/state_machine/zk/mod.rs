@@ -263,6 +263,4 @@ pub struct LightClientCircuitInput<Da: DaSpec> {
     pub previous_light_client_proof_journal: Option<Vec<u8>>,
     /// L2 Genesis state root
     pub l2_genesis_state_root: Option<[u8; 32]>,
-    /// A map from tx hash to chunk data
-    pub wtxid_data: BTreeMap<[u8; 32], Vec<u8>>,
 }

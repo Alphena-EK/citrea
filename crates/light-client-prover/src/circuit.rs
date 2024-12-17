@@ -60,19 +60,20 @@ pub fn run_circuit<DaV: DaVerifier, G: ZkvmGuest>(
     // Mapping from initial state root to final state root and last L2 height
     let mut initial_to_final = std::collections::BTreeMap::<[u8; 32], ([u8; 32], u64)>::new();
 
-    let (mut last_state_root, mut last_l2_height, l2_genesis_state_root) =
+    let (mut last_state_root, mut last_l2_height, l2_genesis_state_root, wtxid_data) =
         previous_light_client_proof_output.as_ref().map_or_else(
             || {
                 let r = input
                     .l2_genesis_state_root
                     .expect("if no preious proof, genesis must exist");
-                (r, 0, r)
+                (r, 0, r, Default::default())
             },
             |prev_journal| {
                 (
                     prev_journal.state_root,
                     prev_journal.last_l2_height,
                     prev_journal.l2_genesis_state_root,
+                    prev_journal.wtxid_data.clone(),
                 )
             },
         );
@@ -94,8 +95,6 @@ pub fn run_circuit<DaV: DaVerifier, G: ZkvmGuest>(
     // TODO: Test for multiple assumptions to see if the env::verify function does automatic matching between the journal and the assumption or do we need to verify them in order?
     // https://github.com/chainwayxyz/citrea/issues/1401
     let batch_proof_method_id = input.batch_proof_method_id;
-
-    let mut wtxid_data = input.wtxid_data;
 
     // Parse the batch proof da data
     for blob in input.da_data {
