@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::BTreeSet;
 
 use anyhow::anyhow;
 use borsh::BorshDeserialize;
@@ -117,9 +117,9 @@ pub fn run_circuit<DaV: DaVerifier, G: ZkvmGuest>(
                         }
                     }
                     DaDataLightClient::Aggregate(tx_ids) => {
-                        let existing_tx_ids: HashSet<[u8; 32]> =
+                        let existing_tx_ids: BTreeSet<[u8; 32]> =
                             wtxid_data.keys().cloned().collect();
-                        let aggregate_tx_ids: HashSet<[u8; 32]> = tx_ids.iter().cloned().collect();
+                        let aggregate_tx_ids: BTreeSet<[u8; 32]> = tx_ids.iter().cloned().collect();
 
                         // If we have all the chunks, perform verification
                         if aggregate_tx_ids.is_subset(&existing_tx_ids) {
