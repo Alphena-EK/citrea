@@ -127,10 +127,8 @@ pub fn run_circuit<DaV: DaVerifier, G: ZkvmGuest>(
                             let complete_proof = tx_ids
                                 .iter()
                                 .filter_map(|k| wtxid_data.get(k).cloned())
-                                .fold(vec![], |mut p, c| {
-                                    p.extend(c);
-                                    p
-                                });
+                                .flatten()
+                                .collect::<Vec<_>>();
 
                             if process_complete_proof::<DaV, G>(
                                 complete_proof,
