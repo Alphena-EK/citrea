@@ -184,7 +184,7 @@ where
         let previous_l1_height = l1_height - 1;
         let mut light_client_proof_journal = None;
         let mut l2_genesis_state_root = None;
-        let l2_last_height = match self
+        let output_data = match self
             .ledger_db
             .get_light_client_proof_data_by_l1_height(previous_l1_height)?
         {
@@ -193,7 +193,7 @@ where
                 let output = data.light_client_proof_output;
                 assumptions.push(proof);
                 light_client_proof_journal = Some(borsh::to_vec(&output)?);
-                Some(output.last_l2_height)
+                Some((output.last_l2_height, output.wtxid_data))
             }
             None => {
                 let soft_confirmation = self
@@ -224,11 +224,11 @@ where
                         previous_l1_height
                     );
                 }
-                Some(soft_confirmation.l2_height)
+                Some((soft_confirmation.l2_height, Default::default()))
             }
         };
 
-        let l2_last_height = l2_last_height.ok_or(anyhow!(
+        let (l2_last_height, wtxid_data) = output_data.ok_or(anyhow!(
             "Could not determine the last L2 height for batch proof"
         ))?;
         let current_fork = fork_from_block_number(FORKS, l2_last_height);
@@ -256,6 +256,7 @@ where
             light_client_proof_method_id: light_client_proof_code_commitment.clone().into(),
             previous_light_client_proof_journal: light_client_proof_journal,
             l2_genesis_state_root,
+            wtxid_data,
         };
 
         let proof = self
@@ -283,6 +284,7 @@ where
             unchained_batch_proofs_info: circuit_output.unchained_batch_proofs_info,
             last_l2_height: circuit_output.last_l2_height,
             l2_genesis_state_root: circuit_output.l2_genesis_state_root,
+            wtxid_data: circuit_output.wtxid_data,
         };
 
         self.ledger_db.insert_light_client_proof_data_by_l1_height(

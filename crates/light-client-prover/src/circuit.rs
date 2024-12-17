@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, HashSet};
+use std::collections::HashSet;
 
 use anyhow::anyhow;
 use borsh::BorshDeserialize;
@@ -95,7 +95,7 @@ pub fn run_circuit<DaV: DaVerifier, G: ZkvmGuest>(
     // https://github.com/chainwayxyz/citrea/issues/1401
     let batch_proof_method_id = input.batch_proof_method_id;
 
-    let mut wtxid_data = BTreeMap::new();
+    let mut wtxid_data = input.wtxid_data;
 
     // Parse the batch proof da data
     for blob in input.da_data {
