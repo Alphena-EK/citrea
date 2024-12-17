@@ -1,3 +1,6 @@
+use std::collections::{BTreeMap, HashSet};
+
+use anyhow::anyhow;
 use borsh::BorshDeserialize;
 use sov_modules_api::BlobReaderTrait;
 use sov_rollup_interface::da::{DaDataLightClient, DaNamespace, DaVerifier};
@@ -91,6 +94,9 @@ pub fn run_circuit<DaV: DaVerifier, G: ZkvmGuest>(
     // TODO: Test for multiple assumptions to see if the env::verify function does automatic matching between the journal and the assumption or do we need to verify them in order?
     // https://github.com/chainwayxyz/citrea/issues/1401
     let batch_proof_method_id = input.batch_proof_method_id;
+
+    let mut wtxid_data = BTreeMap::new();
+
     // Parse the batch proof da data
     for blob in input.da_data {
         if blob.sender().as_ref() == input.batch_prover_da_pub_key {
@@ -99,35 +105,52 @@ pub fn run_circuit<DaV: DaVerifier, G: ZkvmGuest>(
             if let Ok(data) = data {
                 match data {
                     DaDataLightClient::Complete(proof) => {
-                        let journal =
-                            G::extract_raw_output(&proof).expect("DaData proofs must be valid");
-                        // TODO: select output version based on the spec
-                        let batch_proof_output: BatchProofCircuitOutput<DaV::Spec, [u8; 32]> =
-                            match G::verify_and_extract_output(
-                                &journal,
-                                &batch_proof_method_id.into(),
-                            ) {
-                                Ok(output) => output,
-                                Err(_) => continue,
-                            };
-
-                        // Do not add if last l2 height is smaller or equal to previous output
-                        // This is to defend against replay attacks, for example if somehow there is the script of batch proof 1 we do not need to go through it again
-                        if batch_proof_output.last_l2_height <= last_l2_height {
+                        if process_complete_proof::<DaV, G>(
+                            proof,
+                            batch_proof_method_id,
+                            last_l2_height,
+                            &mut initial_to_final,
+                        )
+                        .is_err()
+                        {
                             continue;
                         }
-
-                        recursive_match_state_roots(
-                            &mut initial_to_final,
-                            &BatchProofInfo::new(
-                                batch_proof_output.initial_state_root,
-                                batch_proof_output.final_state_root,
-                                batch_proof_output.last_l2_height,
-                            ),
-                        );
                     }
-                    DaDataLightClient::Aggregate(_) => todo!(),
-                    DaDataLightClient::Chunk(_) => todo!(),
+                    DaDataLightClient::Aggregate(tx_ids) => {
+                        let existing_tx_ids: HashSet<[u8; 32]> =
+                            wtxid_data.keys().cloned().collect();
+                        let aggregate_tx_ids: HashSet<[u8; 32]> = tx_ids.iter().cloned().collect();
+
+                        // If we have all the chunks, perform verification
+                        if aggregate_tx_ids.is_subset(&existing_tx_ids) {
+                            // Concatenate complete proof
+                            let complete_proof = tx_ids
+                                .iter()
+                                .filter_map(|k| wtxid_data.get(k).cloned())
+                                .fold(vec![], |mut p, c| {
+                                    p.extend(c);
+                                    p
+                                });
+
+                            if process_complete_proof::<DaV, G>(
+                                complete_proof,
+                                batch_proof_method_id,
+                                last_l2_height,
+                                &mut initial_to_final,
+                            )
+                            .is_err()
+                            {
+                                continue;
+                            }
+
+                            for tx_id in &aggregate_tx_ids {
+                                wtxid_data.remove(tx_id);
+                            }
+                        }
+                    }
+                    DaDataLightClient::Chunk(chunk) => {
+                        wtxid_data.insert(blob.hash(), chunk);
+                    }
                 }
             }
         }
@@ -160,5 +183,38 @@ pub fn run_circuit<DaV: DaVerifier, G: ZkvmGuest>(
         unchained_batch_proofs_info: unchained_outputs,
         last_l2_height,
         l2_genesis_state_root,
+        wtxid_data,
     })
+}
+
+fn process_complete_proof<DaV: DaVerifier, G: ZkvmGuest>(
+    proof: Vec<u8>,
+    batch_proof_method_id: [u32; 8],
+    last_l2_height: u64,
+    initial_to_final: &mut std::collections::BTreeMap<[u8; 32], ([u8; 32], u64)>,
+) -> anyhow::Result<()> {
+    let journal = G::extract_raw_output(&proof).expect("DaData proofs must be valid");
+    // TODO: select output version based on the spec
+    let batch_proof_output: BatchProofCircuitOutput<DaV::Spec, [u8; 32]> =
+        match G::verify_and_extract_output(&journal, &batch_proof_method_id.into()) {
+            Ok(output) => output,
+            Err(_) => return Err(anyhow!("Failed to verify proof")),
+        };
+
+    // Do not add if last l2 height is smaller or equal to previous output
+    // This is to defend against replay attacks, for example if somehow there is the script of batch proof 1 we do not need to go through it again
+    if batch_proof_output.last_l2_height <= last_l2_height {
+        return Err(anyhow!(
+            "Last L2 height is less than proof's last l2 height"
+        ));
+    }
+
+    Ok(recursive_match_state_roots(
+        initial_to_final,
+        &BatchProofInfo::new(
+            batch_proof_output.initial_state_root,
+            batch_proof_output.final_state_root,
+            batch_proof_output.last_l2_height,
+        ),
+    ))
 }
