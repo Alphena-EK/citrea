@@ -184,7 +184,7 @@ where
         let previous_l1_height = l1_height - 1;
         let mut light_client_proof_journal = None;
         let mut l2_genesis_state_root = None;
-        let output_data = match self
+        let last_l2_height = match self
             .ledger_db
             .get_light_client_proof_data_by_l1_height(previous_l1_height)?
         {
@@ -193,7 +193,7 @@ where
                 let output = data.light_client_proof_output;
                 assumptions.push(proof);
                 light_client_proof_journal = Some(borsh::to_vec(&output)?);
-                Some((output.last_l2_height, output.wtxid_data))
+                Some(output.last_l2_height)
             }
             None => {
                 let soft_confirmation = self
@@ -224,11 +224,11 @@ where
                         previous_l1_height
                     );
                 }
-                Some((soft_confirmation.l2_height, Default::default()))
+                Some(soft_confirmation.l2_height)
             }
         };
 
-        let (l2_last_height, wtxid_data) = output_data.ok_or(anyhow!(
+        let l2_last_height = last_l2_height.ok_or(anyhow!(
             "Could not determine the last L2 height for batch proof"
         ))?;
         let current_fork = fork_from_block_number(FORKS, l2_last_height);
