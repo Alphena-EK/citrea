@@ -18,7 +18,7 @@ use bitcoin::hashes::Hash;
 use bitcoin::secp256k1::SecretKey;
 use bitcoin::{Amount, BlockHash, CompactTarget, Transaction, Txid, Wtxid};
 use bitcoincore_rpc::json::{SignRawTransactionInput, TestMempoolAcceptResult};
-use bitcoincore_rpc::{Auth, Client, Error, RpcApi, RpcError};
+use bitcoincore_rpc::{Auth, Client, Error as BitcoinError, Error, RpcApi, RpcError};
 use borsh::BorshDeserialize;
 use citrea_primitives::compression::{compress_blob, decompress_blob};
 use citrea_primitives::MAX_TXBODY_SIZE;
@@ -790,12 +790,9 @@ impl DaService for BitcoinService {
                         self.client
                             .get_raw_transaction(&chunk_id, None)
                             .await
-                            .map_err(|e| {
-                                use bitcoincore_rpc::Error;
-                                match e {
-                                    Error::Io(_) => backoff::Error::transient(e),
-                                    _ => backoff::Error::permanent(e),
-                                }
+                            .map_err(|e| match e {
+                                BitcoinError::Io(_) => backoff::Error::transient(e),
+                                _ => backoff::Error::permanent(e),
                             })
                     })
                     .await;
