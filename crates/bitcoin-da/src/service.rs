@@ -57,7 +57,7 @@ use crate::spec::proof::InclusionMultiProof;
 use crate::spec::transaction::TransactionWrapper;
 use crate::spec::utxo::UTXO;
 use crate::spec::{BitcoinSpec, RollupParams};
-use crate::verifier::BitcoinVerifier;
+use crate::verifier::{BitcoinVerifier, METHOD_ID_UPGRADE_AUTHORITY};
 use crate::REVEAL_OUTPUT_AMOUNT;
 
 pub const FINALITY_DEPTH: u64 = 30; // blocks
@@ -764,6 +764,9 @@ impl DaService for BitcoinService {
                     ParsedLightClientTransaction::Chunk(_chunk) => {
                         // we ignore them for now
                     }
+                    ParsedLightClientTransaction::BatchProverMethodId(_) => {
+                        // ignore because these are not proofs
+                    }
                 }
             }
         }
@@ -825,7 +828,8 @@ impl DaService for BitcoinService {
                         body.extend(chunk);
                     }
                     ParsedLightClientTransaction::Complete(_)
-                    | ParsedLightClientTransaction::Aggregate(_) => {
+                    | ParsedLightClientTransaction::Aggregate(_)
+                    | ParsedLightClientTransaction::BatchProverMethodId(_) => {
                         error!("{}:{}: Expected chunk, got other tx kind", tx_id, chunk_id);
                         continue 'aggregate;
                     }
@@ -991,6 +995,19 @@ impl DaService for BitcoinService {
                             }
                             ParsedLightClientTransaction::Chunk(_) => {
                                 // ignore
+                            }
+                            ParsedLightClientTransaction::BatchProverMethodId(method_id) => {
+                                if method_id.public_key() == METHOD_ID_UPGRADE_AUTHORITY {
+                                    if let Some(hash) = method_id.get_sig_verified_hash() {
+                                        let relevant_tx = BlobWithSender::new(
+                                            method_id.body,
+                                            method_id.public_key,
+                                            hash,
+                                        );
+
+                                        relevant_txs.push(relevant_tx);
+                                    }
+                                }
                             }
                         }
                     }

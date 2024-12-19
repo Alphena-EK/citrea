@@ -17,6 +17,9 @@ use crate::spec::BitcoinSpec;
 
 pub const WITNESS_COMMITMENT_PREFIX: &[u8] = &[0x6a, 0x24, 0xaa, 0x21, 0xa9, 0xed];
 
+pub const METHOD_ID_UPGRADE_AUTHORITY: &[u8] =
+    &[0xde, 0xad, 0xde, 0xad, 0xde, 0xad, 0xde, 0xad, 0xde, 0xad]; // TODO
+
 /// The maximum target value, which corresponds to the minimum difficulty
 const MAX_TARGET: U256 =
     U256::from_be_hex("00000000FFFF0000000000000000000000000000000000000000000000000000");
@@ -145,6 +148,16 @@ impl DaVerifier for BitcoinVerifier {
                             }
                             ParsedLightClientTransaction::Chunk(_chunk) => {
                                 // ignore
+                            }
+                            ParsedLightClientTransaction::BatchProverMethodId(method_id) => {
+                                if let Some(blob_content) =
+                                    verified_blob_content(&method_id, &mut blobs_iter)?
+                                {
+                                    // assert tx content is not modified
+                                    if blob_content != method_id.body {
+                                        return Err(ValidationError::BlobContentWasModified);
+                                    }
+                                }
                             }
                         }
                     }

@@ -22,6 +22,15 @@ pub struct SequencerCommitment {
     pub l2_end_block_number: u64,
 }
 
+/// A new batch prover method_id starting to be applied from the l2_block_number (inclusive).
+#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq, BorshDeserialize, BorshSerialize)]
+pub struct BatchProverMethodId {
+    /// Merkle root of soft confirmation hashes
+    pub method_id: [u8; 32],
+    /// Start L2 block's number
+    pub l2_block_number: u64,
+}
+
 impl core::cmp::PartialOrd for SequencerCommitment {
     fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
         Some(self.cmp(other))
@@ -73,6 +82,8 @@ pub enum DaDataLightClient {
     Aggregate(Vec<[u8; 32]>),
     /// A chunk of an aggregate
     Chunk(Vec<u8>),
+    /// A new batch prover method_id
+    BatchProverMethodId(BatchProverMethodId),
 }
 
 /// Data written to DA and read from DA must be the borsh serialization of this enum
