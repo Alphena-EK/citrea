@@ -816,7 +816,7 @@ impl DaService for BitcoinService {
                     ParsedLightClientTransaction::Chunk(part) => {
                         let data = DaDataLightClient::try_from_slice(&part.body)
                             .map_err(|e| anyhow!("{}: Failed to parse chunk: {e}", tx_id))?;
-                        let DaDataLightClient::Chunk(_wtx_id, chunk) = data else {
+                        let DaDataLightClient::Chunk(chunk) = data else {
                             bail!("{}: Chunk: unexpected kind", tx_id);
                         };
                         body.extend(chunk);
@@ -945,6 +945,7 @@ impl DaService for BitcoinService {
 
         let mut relevant_txs = vec![];
         for tx in &completeness_proof {
+            let wtxid = tx.compute_wtxid();
             match namespace {
                 DaNamespace::ToBatchProver => {
                     if let Ok(tx) = parse_batch_proof_transaction(tx) {
@@ -988,8 +989,11 @@ impl DaService for BitcoinService {
                                     relevant_txs.push(relevant_tx);
                                 }
                             }
-                            ParsedLightClientTransaction::Chunk(_) => {
-                                // ignore
+                            ParsedLightClientTransaction::Chunk(chunk) => {
+                                let mut relevant_tx =
+                                    BlobWithSender::new(chunk.body, vec![0], [0; 32], None);
+                                relevant_tx.wtxid = Some(wtxid.to_byte_array());
+                                relevant_txs.push(relevant_tx);
                             }
                         }
                     }
