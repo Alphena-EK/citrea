@@ -143,8 +143,14 @@ impl DaVerifier for BitcoinVerifier {
                                     }
                                 }
                             }
-                            ParsedLightClientTransaction::Chunk(_chunk) => {
-                                // ignore
+                            ParsedLightClientTransaction::Chunk(chunk) => {
+                                if let Some(blob_content) =
+                                    verified_blob_chunk(&chunk, &mut blobs_iter, wtxid)?
+                                {
+                                    if blob_content != chunk.body {
+                                        return Err(ValidationError::BlobContentWasModified);
+                                    }
+                                }
                             }
                         }
                     }
@@ -305,6 +311,35 @@ impl DaVerifier for BitcoinVerifier {
             current_target_bits,
         })
     }
+}
+
+fn verified_blob_chunk<'a, T, I>(
+    tx: &T,
+    blobs_iter: &mut I,
+    wtxid: &[u8; 32],
+) -> Result<Option<&'a [u8]>, ValidationError>
+where
+    T: VerifyParsed,
+    I: Iterator<Item = &'a BlobWithSender>,
+{
+    if let Some(blob_hash) = tx.get_sig_verified_hash() {
+        let blob = blobs_iter.next();
+
+        let Some(blob) = blob else {
+            return Err(ValidationError::ValidBlobNotFoundInBlobs);
+        };
+
+        if blob.hash != blob_hash {
+            return Err(ValidationError::BlobWasTamperedWith);
+        }
+
+        if blob.wtxid != Some(*wtxid) {
+            return Err(ValidationError::BlobWasTamperedWith);
+        }
+
+        return Ok(Some(blob.verified_data()));
+    }
+    return Ok(None);
 }
 
 // Get associated blob content only if signatures, hashes and public keys match

@@ -118,6 +118,18 @@ impl VerifyParsed for ParsedSequencerCommitment {
     }
 }
 
+impl VerifyParsed for ParsedChunk {
+    fn public_key(&self) -> &[u8] {
+        &[0]
+    }
+    fn signature(&self) -> &[u8] {
+        &[0]
+    }
+    fn body(&self) -> &[u8] {
+        &self.body
+    }
+}
+
 #[derive(Error, Debug, Clone, PartialEq)]
 pub enum ParserError {
     #[error("Invalid header length")]
