@@ -28,7 +28,6 @@ fn test_light_client_circuit_valid_da_valid_data() {
         l2_genesis_state_root: Some([1u8; 32]),
         batch_proof_method_id,
         batch_prover_da_pub_key: [9; 32].to_vec(),
-        wtxid_data: Default::default(),
     };
 
     let serialized_input = borsh::to_vec(&input).expect("should serialize");
@@ -60,7 +59,6 @@ fn test_light_client_circuit_valid_da_valid_data() {
         l2_genesis_state_root: None,
         batch_proof_method_id,
         batch_prover_da_pub_key: [9; 32].to_vec(),
-        wtxid_data: Default::default(),
     };
 
     let serialized_input_2 = borsh::to_vec(&input_2).expect("should serialize");
@@ -95,7 +93,6 @@ fn test_wrong_order_da_blocks_should_still_work() {
         l2_genesis_state_root: Some([1u8; 32]),
         batch_proof_method_id: light_client_proof_method_id,
         batch_prover_da_pub_key: [9; 32].to_vec(),
-        wtxid_data: Default::default(),
     };
 
     let serialized_input = borsh::to_vec(&input).expect("should serialize");
@@ -130,7 +127,6 @@ fn create_unchainable_outputs_then_chain_them_on_next_block() {
         l2_genesis_state_root: Some([1u8; 32]),
         batch_proof_method_id: light_client_proof_method_id,
         batch_prover_da_pub_key: [9; 32].to_vec(),
-        wtxid_data: Default::default(),
     };
 
     let serialized_input = borsh::to_vec(&input).expect("should serialize");
@@ -202,7 +198,6 @@ fn test_header_chain_proof_height_and_hash() {
         l2_genesis_state_root: Some([1u8; 32]),
         batch_proof_method_id: light_client_proof_method_id,
         batch_prover_da_pub_key: [9; 32].to_vec(),
-        wtxid_data: Default::default(),
     };
 
     let serialized_input = borsh::to_vec(&input).expect("should serialize");
@@ -234,7 +229,6 @@ fn test_header_chain_proof_height_and_hash() {
         l2_genesis_state_root: None,
         batch_proof_method_id: light_client_proof_method_id,
         batch_prover_da_pub_key: [9; 32].to_vec(),
-        wtxid_data: Default::default(),
     };
 
     let serialized_input_2 = borsh::to_vec(&input_2).expect("should serialize");
@@ -270,7 +264,6 @@ fn test_unverifiable_batch_proofs() {
         l2_genesis_state_root: Some([1u8; 32]),
         batch_proof_method_id,
         batch_prover_da_pub_key: [9; 32].to_vec(),
-        wtxid_data: Default::default(),
     };
 
     let serialized_input = borsh::to_vec(&input).expect("should serialize");
@@ -308,7 +301,6 @@ fn test_unverifiable_prev_light_client_proof() {
         l2_genesis_state_root: Some([1u8; 32]),
         batch_proof_method_id,
         batch_prover_da_pub_key: [9; 32].to_vec(),
-        wtxid_data: Default::default(),
     };
 
     let serialized_input = borsh::to_vec(&input).expect("should serialize");
@@ -338,7 +330,6 @@ fn test_unverifiable_prev_light_client_proof() {
         l2_genesis_state_root: None,
         batch_proof_method_id: light_client_proof_method_id,
         batch_prover_da_pub_key: [9; 32].to_vec(),
-        wtxid_data: Default::default(),
     };
 
     guest.input = borsh::to_vec(&input_2).unwrap();
