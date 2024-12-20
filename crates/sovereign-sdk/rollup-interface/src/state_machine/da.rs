@@ -249,6 +249,9 @@ pub trait BlobReaderTrait:
     /// Returns the hash of the blob as it appears on the DA layer
     fn hash(&self) -> [u8; 32];
 
+    /// Returns the witness transaction ID of the blob as it appears on the DA layer
+    fn wtxid(&self) -> Option<[u8; 32]>;
+
     /// Returns a slice containing all the data accessible to the rollup at this point in time.
     /// When running in native mode, the rollup can extend this slice by calling `advance`. In zk-mode,
     /// the rollup is limited to only the verified data.

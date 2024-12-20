@@ -955,6 +955,7 @@ impl DaService for BitcoinService {
                                         seq_comm.body,
                                         seq_comm.public_key,
                                         hash,
+                                        None,
                                     );
 
                                     relevant_txs.push(relevant_tx);
@@ -970,7 +971,7 @@ impl DaService for BitcoinService {
                                 if let Some(hash) = complete.get_sig_verified_hash() {
                                     let blob = decompress_blob(&complete.body);
                                     let relevant_tx =
-                                        BlobWithSender::new(blob, complete.public_key, hash);
+                                        BlobWithSender::new(blob, complete.public_key, hash, None);
 
                                     relevant_txs.push(relevant_tx);
                                 }
@@ -981,6 +982,7 @@ impl DaService for BitcoinService {
                                         aggregate.body,
                                         aggregate.public_key,
                                         hash,
+                                        None,
                                     );
 
                                     relevant_txs.push(relevant_tx);
@@ -1125,7 +1127,7 @@ pub fn get_relevant_blobs_from_txs(
                 ParsedBatchProofTransaction::SequencerCommitment(seq_comm) => {
                     if let Some(hash) = seq_comm.get_sig_verified_hash() {
                         let relevant_tx =
-                            BlobWithSender::new(seq_comm.body, seq_comm.public_key, hash);
+                            BlobWithSender::new(seq_comm.body, seq_comm.public_key, hash, None);
 
                         relevant_txs.push(relevant_tx);
                     }

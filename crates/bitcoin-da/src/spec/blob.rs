@@ -13,8 +13,20 @@ pub struct BlobBuf {
     pub offset: usize,
 }
 
+// BlobWithSender is a wrapper around BlobBuf to implement BlobReaderTrait
+#[derive(Clone, Debug, PartialEq, BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
+pub struct BlobWithSender {
+    pub hash: [u8; 32],
+
+    pub sender: AddressWrapper,
+
+    pub blob: CountedBufReader<BlobBuf>,
+
+    pub wtxid: Option<[u8; 32]>,
+}
+
 impl BlobWithSender {
-    pub fn new(blob: Vec<u8>, sender: Vec<u8>, hash: [u8; 32]) -> Self {
+    pub fn new(blob: Vec<u8>, sender: Vec<u8>, hash: [u8; 32], wtxid: Option<[u8; 32]>) -> Self {
         Self {
             blob: CountedBufReader::new(BlobBuf {
                 data: blob,
@@ -22,6 +34,7 @@ impl BlobWithSender {
             }),
             sender: AddressWrapper(sender),
             hash,
+            wtxid,
         }
     }
 }
@@ -40,16 +53,6 @@ impl Buf for BlobBuf {
     }
 }
 
-// BlobWithSender is a wrapper around BlobBuf to implement BlobReaderTrait
-#[derive(Clone, Debug, PartialEq, BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
-pub struct BlobWithSender {
-    pub hash: [u8; 32],
-
-    pub sender: AddressWrapper,
-
-    pub blob: CountedBufReader<BlobBuf>,
-}
-
 impl BlobReaderTrait for BlobWithSender {
     type Address = AddressWrapper;
 
@@ -59,6 +62,10 @@ impl BlobReaderTrait for BlobWithSender {
 
     fn hash(&self) -> [u8; 32] {
         self.hash
+    }
+
+    fn wtxid(&self) -> Option<[u8; 32]> {
+        self.wtxid
     }
 
     fn verified_data(&self) -> &[u8] {

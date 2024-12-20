@@ -45,7 +45,7 @@ pub(crate) fn create_mock_blob(
     let da_data = DaDataLightClient::Complete(mock_serialized);
     let da_data_ser = borsh::to_vec(&da_data).expect("should serialize");
 
-    let mut blob = MockBlob::new(da_data_ser, MockAddress::new([9u8; 32]), [0u8; 32]);
+    let mut blob = MockBlob::new(da_data_ser, MockAddress::new([9u8; 32]), [0u8; 32], None);
     blob.full_data();
 
     blob

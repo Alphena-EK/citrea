@@ -115,7 +115,7 @@ pub fn run_circuit<DaV: DaVerifier, G: ZkvmGuest>(
                             continue;
                         }
                     }
-                    DaDataLightClient::Aggregate(_, wtx_ids) => {
+                    DaDataLightClient::Aggregate(_tx_ids, wtx_ids) => {
                         let existing_tx_ids: BTreeSet<[u8; 32]> =
                             wtxid_data.keys().cloned().collect();
                         let aggregate_tx_ids: BTreeSet<[u8; 32]> =
@@ -146,8 +146,9 @@ pub fn run_circuit<DaV: DaVerifier, G: ZkvmGuest>(
                             }
                         }
                     }
-                    DaDataLightClient::Chunk(wtx_id, chunk) => {
-                        wtxid_data.insert(wtx_id, chunk);
+                    DaDataLightClient::Chunk(chunk) => {
+                        wtxid_data
+                            .insert(blob.wtxid().expect("Wtxid should be set for chunks"), chunk);
                     }
                 }
             }

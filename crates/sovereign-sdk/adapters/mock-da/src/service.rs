@@ -223,6 +223,7 @@ impl MockDaService {
             zkp_proof,
             self.sequencer_da_address,
             data_hash,
+            None,
         );
         let header = MockBlockHeader {
             prev_hash: previous_block_hash,

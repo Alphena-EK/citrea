@@ -18,6 +18,10 @@ impl BlobReaderTrait for MockBlob {
         self.hash
     }
 
+    fn wtxid(&self) -> Option<[u8; 32]> {
+        self.wtxid
+    }
+
     fn verified_data(&self) -> &[u8] {
         self.data.accumulator()
     }
