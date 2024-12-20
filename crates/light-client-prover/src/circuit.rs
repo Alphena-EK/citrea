@@ -104,14 +104,14 @@ pub fn run_circuit<DaV: DaVerifier, G: ZkvmGuest>(
             if let Ok(data) = data {
                 match data {
                     DaDataLightClient::Complete(proof) => {
-                        if process_complete_proof::<DaV, G>(
+                        let result = process_complete_proof::<DaV, G>(
                             proof,
                             batch_proof_method_id,
                             last_l2_height,
                             &mut initial_to_final,
-                        )
-                        .is_err()
-                        {
+                        );
+
+                        if result.is_err() {
                             continue;
                         }
                     }
@@ -130,14 +130,14 @@ pub fn run_circuit<DaV: DaVerifier, G: ZkvmGuest>(
                                 .flatten()
                                 .collect::<Vec<_>>();
 
-                            if process_complete_proof::<DaV, G>(
+                            let result = process_complete_proof::<DaV, G>(
                                 complete_proof,
                                 batch_proof_method_id,
                                 last_l2_height,
                                 &mut initial_to_final,
-                            )
-                            .is_err()
-                            {
+                            );
+
+                            if result.is_err() {
                                 continue;
                             }
 
