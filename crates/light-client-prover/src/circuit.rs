@@ -208,12 +208,14 @@ fn process_complete_proof<DaV: DaVerifier, G: ZkvmGuest>(
         ));
     }
 
-    Ok(recursive_match_state_roots(
+    recursive_match_state_roots(
         initial_to_final,
         &BatchProofInfo::new(
             batch_proof_output.initial_state_root,
             batch_proof_output.final_state_root,
             batch_proof_output.last_l2_height,
         ),
-    ))
+    );
+
+    Ok(())
 }
