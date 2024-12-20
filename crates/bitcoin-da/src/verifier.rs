@@ -322,7 +322,7 @@ where
     T: VerifyParsed,
     I: Iterator<Item = &'a BlobWithSender>,
 {
-    if let Some(blob_hash) = tx.get_sig_verified_hash() {
+    if let Some(blob_hash) = tx.get_unverified_hash() {
         let blob = blobs_iter.next();
 
         let Some(blob) = blob else {
