@@ -237,7 +237,7 @@ pub struct LightClientCircuitOutput<Da: DaSpec> {
     /// Genesis state root of Citrea
     pub l2_genesis_state_root: [u8; 32],
     /// A map from tx hash to chunk data
-    pub wtxid_data: BTreeMap<[u8; 32], Vec<u8>>,
+    pub unprocessed_chunks: BTreeMap<[u8; 32], Vec<u8>>,
 }
 
 /// The input of light client proof

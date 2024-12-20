@@ -60,7 +60,7 @@ pub fn run_circuit<DaV: DaVerifier, G: ZkvmGuest>(
     // Mapping from initial state root to final state root and last L2 height
     let mut initial_to_final = std::collections::BTreeMap::<[u8; 32], ([u8; 32], u64)>::new();
 
-    let (mut last_state_root, mut last_l2_height, l2_genesis_state_root, mut wtxid_data) =
+    let (mut last_state_root, mut last_l2_height, l2_genesis_state_root, mut unprocessed_chunks) =
         previous_light_client_proof_output.as_ref().map_or_else(
             || {
                 let r = input
@@ -73,7 +73,7 @@ pub fn run_circuit<DaV: DaVerifier, G: ZkvmGuest>(
                     prev_journal.state_root,
                     prev_journal.last_l2_height,
                     prev_journal.l2_genesis_state_root,
-                    prev_journal.wtxid_data.clone(),
+                    prev_journal.unprocessed_chunks.clone(),
                 )
             },
         );
@@ -117,7 +117,7 @@ pub fn run_circuit<DaV: DaVerifier, G: ZkvmGuest>(
                     }
                     DaDataLightClient::Aggregate(_tx_ids, wtx_ids) => {
                         let existing_tx_ids: BTreeSet<[u8; 32]> =
-                            wtxid_data.keys().cloned().collect();
+                            unprocessed_chunks.keys().cloned().collect();
                         let aggregate_tx_ids: BTreeSet<[u8; 32]> =
                             wtx_ids.iter().cloned().collect();
 
@@ -126,7 +126,7 @@ pub fn run_circuit<DaV: DaVerifier, G: ZkvmGuest>(
                             // Concatenate complete proof
                             let complete_proof = wtx_ids
                                 .iter()
-                                .filter_map(|k| wtxid_data.get(k).cloned())
+                                .filter_map(|k| unprocessed_chunks.get(k).cloned())
                                 .flatten()
                                 .collect::<Vec<_>>();
 
@@ -142,12 +142,12 @@ pub fn run_circuit<DaV: DaVerifier, G: ZkvmGuest>(
                             }
 
                             for tx_id in &aggregate_tx_ids {
-                                wtxid_data.remove(tx_id);
+                                unprocessed_chunks.remove(tx_id);
                             }
                         }
                     }
                     DaDataLightClient::Chunk(chunk) => {
-                        wtxid_data
+                        unprocessed_chunks
                             .insert(blob.wtxid().expect("Wtxid should be set for chunks"), chunk);
                     }
                 }
