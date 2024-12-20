@@ -339,7 +339,7 @@ where
 
         return Ok(Some(blob.verified_data()));
     }
-    return Ok(None);
+    Ok(None)
 }
 
 // Get associated blob content only if signatures, hashes and public keys match
