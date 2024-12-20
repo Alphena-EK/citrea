@@ -115,15 +115,16 @@ pub fn run_circuit<DaV: DaVerifier, G: ZkvmGuest>(
                             continue;
                         }
                     }
-                    DaDataLightClient::Aggregate(tx_ids) => {
+                    DaDataLightClient::Aggregate(_, wtx_ids) => {
                         let existing_tx_ids: BTreeSet<[u8; 32]> =
                             wtxid_data.keys().cloned().collect();
-                        let aggregate_tx_ids: BTreeSet<[u8; 32]> = tx_ids.iter().cloned().collect();
+                        let aggregate_tx_ids: BTreeSet<[u8; 32]> =
+                            wtx_ids.iter().cloned().collect();
 
                         // If we have all the chunks, perform verification
                         if aggregate_tx_ids.is_subset(&existing_tx_ids) {
                             // Concatenate complete proof
-                            let complete_proof = tx_ids
+                            let complete_proof = wtx_ids
                                 .iter()
                                 .filter_map(|k| wtxid_data.get(k).cloned())
                                 .flatten()
@@ -145,8 +146,8 @@ pub fn run_circuit<DaV: DaVerifier, G: ZkvmGuest>(
                             }
                         }
                     }
-                    DaDataLightClient::Chunk(chunk) => {
-                        wtxid_data.insert(blob.hash(), chunk);
+                    DaDataLightClient::Chunk(wtx_id, chunk) => {
+                        wtxid_data.insert(wtx_id, chunk);
                     }
                 }
             }

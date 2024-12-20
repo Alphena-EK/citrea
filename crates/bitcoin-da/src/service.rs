@@ -774,7 +774,7 @@ impl DaService for BitcoinService {
             let mut body = Vec::new();
             let data = DaDataLightClient::try_from_slice(&aggregate.body)
                 .map_err(|e| anyhow!("{}: Failed to parse aggregate: {e}", tx_id))?;
-            let DaDataLightClient::Aggregate(chunk_ids) = data else {
+            let DaDataLightClient::Aggregate(chunk_ids, _wtx_ids) = data else {
                 error!("{}: Aggregate: unexpected kind", tx_id);
                 continue;
             };
@@ -816,7 +816,7 @@ impl DaService for BitcoinService {
                     ParsedLightClientTransaction::Chunk(part) => {
                         let data = DaDataLightClient::try_from_slice(&part.body)
                             .map_err(|e| anyhow!("{}: Failed to parse chunk: {e}", tx_id))?;
-                        let DaDataLightClient::Chunk(chunk) = data else {
+                        let DaDataLightClient::Chunk(_wtx_id, chunk) = data else {
                             bail!("{}: Chunk: unexpected kind", tx_id);
                         };
                         body.extend(chunk);

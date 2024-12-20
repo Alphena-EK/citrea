@@ -70,7 +70,7 @@ pub enum DaDataLightClient {
     /// A zk proof and state diff
     Complete(Proof),
     /// A list of tx ids
-    Aggregate(Vec<[u8; 32]>),
+    Aggregate(Vec<[u8; 32]>, Vec<[u8; 32]>),
     /// A chunk of an aggregate
     Chunk(Vec<u8>),
 }

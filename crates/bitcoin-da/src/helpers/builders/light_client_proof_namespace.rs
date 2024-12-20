@@ -437,12 +437,17 @@ pub fn create_inscription_type_1(
         }
     }
 
-    let reveal_tx_ids: Vec<_> = reveal_chunks
+    let (reveal_tx_ids, reveal_wtx_ids): (Vec<_>, Vec<_>) = reveal_chunks
         .iter()
-        .map(|tx| tx.compute_txid().to_byte_array())
+        .map(|tx| {
+            (
+                tx.compute_txid().to_byte_array(),
+                tx.compute_wtxid().to_byte_array(),
+            )
+        })
         .collect();
 
-    let aggregate = DaDataLightClient::Aggregate(reveal_tx_ids);
+    let aggregate = DaDataLightClient::Aggregate(reveal_tx_ids, reveal_wtx_ids);
 
     // To sign the list of tx ids we assume they form a contigious list of bytes
     let reveal_body: Vec<u8> =
