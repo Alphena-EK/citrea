@@ -224,7 +224,7 @@ impl DaVerifier for BitcoinVerifier {
         &self,
         previous_light_client_proof_output: &Option<LightClientCircuitOutput<Self::Spec>>,
         block_header: &<Self::Spec as DaSpec>::BlockHeader,
-        _difficulty_constants: DaNetworkConstants<BitcoinNetwork>,
+        da_constants: DaNetworkConstants<BitcoinNetwork>,
     ) -> Result<UpdatedDaState<Self::Spec>, Self::Error> {
         // Check 1: Verify block hash
         if !block_header.verify_hash() {

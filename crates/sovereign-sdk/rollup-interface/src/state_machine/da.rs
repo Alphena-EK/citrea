@@ -195,7 +195,7 @@ pub trait DaVerifier: Send + Sync {
         &self,
         previous_light_client_proof_output: &Option<LightClientCircuitOutput<Self::Spec>>,
         block_header: &<Self::Spec as DaSpec>::BlockHeader,
-        difficulty_constants: DaNetworkConstants<<Self::Spec as DaSpec>::Network>,
+        da_constants: DaNetworkConstants<<Self::Spec as DaSpec>::Network>,
     ) -> Result<UpdatedDaState<Self::Spec>, Self::Error>;
 }
 
