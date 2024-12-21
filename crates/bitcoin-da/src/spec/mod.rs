@@ -28,6 +28,24 @@ pub struct RollupParams {
     pub to_batch_proof_prefix: Vec<u8>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum BitcoinNetwork {
+    Mainnet,
+    Testnet4,
+    Signet,
+    Regtest,
+}
+
+impl BitcoinNetwork {
+    pub fn is_testnet4(&self) -> bool {
+        *self == Self::Testnet4
+    }
+
+    pub fn is_regtest(&self) -> bool {
+        *self == Self::Regtest
+    }
+}
+
 impl DaSpec for BitcoinSpec {
     type SlotHash = BlockHashWrapper;
 
@@ -42,4 +60,6 @@ impl DaSpec for BitcoinSpec {
     type InclusionMultiProof = InclusionMultiProof;
 
     type CompletenessProof = Vec<TransactionWrapper>;
+
+    type Network = BitcoinNetwork;
 }

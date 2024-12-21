@@ -2,7 +2,7 @@ use anyhow::anyhow;
 use borsh::{BorshDeserialize, BorshSerialize};
 use serde::{Deserialize, Serialize};
 use sov_rollup_interface::da::{
-    BlobReaderTrait, BlockHeaderTrait, DaDifficultyConstants, DaNamespace, DaSpec, DaVerifier,
+    BlobReaderTrait, BlockHeaderTrait, DaNamespace, DaNetworkConstants, DaSpec, DaVerifier,
     UpdatedDaState,
 };
 
@@ -46,6 +46,7 @@ impl DaSpec for MockDaSpec {
     type InclusionMultiProof = [u8; 32];
     type CompletenessProof = ();
     type ChainParams = ();
+    type Network = ();
 }
 
 impl DaVerifier for MockDaVerifier {
@@ -74,7 +75,7 @@ impl DaVerifier for MockDaVerifier {
             sov_rollup_interface::zk::LightClientCircuitOutput<Self::Spec>,
         >,
         block_header: &<Self::Spec as DaSpec>::BlockHeader,
-        _difficulty_constants: DaDifficultyConstants,
+        _difficulty_constants: DaNetworkConstants<()>,
     ) -> Result<UpdatedDaState<Self::Spec>, Self::Error> {
         let Some(previous_light_client_proof_output) = previous_light_client_proof_output else {
             return Ok(UpdatedDaState {

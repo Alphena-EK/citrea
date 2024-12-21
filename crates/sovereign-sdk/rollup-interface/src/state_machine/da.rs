@@ -55,19 +55,25 @@ pub struct UpdatedDaState<Spec: DaSpec> {
 
 /// Da network constants representing difficulty.
 #[derive(Debug, Clone, Copy)]
-pub struct DaDifficultyConstants {
+pub struct DaNetworkConstants<N> {
     /// Maximum bits of the chain
     pub max_bits: u32,
     /// Maximum target of the chain
     pub max_target: U256,
+    /// Network
+    pub network: N,
 }
 
 #[cfg(feature = "testing")]
-impl Default for DaDifficultyConstants {
+impl<N> Default for DaNetworkConstants<N>
+where
+    N: Default,
+{
     fn default() -> Self {
         Self {
             max_bits: 0,
             max_target: U256::ZERO,
+            network: Default::default(),
         }
     }
 }
@@ -152,6 +158,9 @@ pub trait DaSpec:
     /// The parameters of the rollup which are baked into the state-transition function.
     /// For example, this could include the namespace of the rollup on Celestia.
     type ChainParams: Send + Sync;
+
+    /// The type representing the network of the Da.
+    type Network: Debug + Clone;
 }
 
 /// A `DaVerifier` implements the logic required to create a zk proof that some data
@@ -186,7 +195,7 @@ pub trait DaVerifier: Send + Sync {
         &self,
         previous_light_client_proof_output: &Option<LightClientCircuitOutput<Self::Spec>>,
         block_header: &<Self::Spec as DaSpec>::BlockHeader,
-        difficulty_constants: DaDifficultyConstants,
+        difficulty_constants: DaNetworkConstants<<Self::Spec as DaSpec>::Network>,
     ) -> Result<UpdatedDaState<Self::Spec>, Self::Error>;
 }
 

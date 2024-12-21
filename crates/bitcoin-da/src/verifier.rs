@@ -3,7 +3,7 @@ use citrea_primitives::compression::decompress_blob;
 use crypto_bigint::{Encoding, U256};
 use itertools::Itertools;
 use sov_rollup_interface::da::{
-    BlobReaderTrait, BlockHeaderTrait, DaDifficultyConstants, DaNamespace, DaSpec, DaVerifier,
+    BlobReaderTrait, BlockHeaderTrait, DaNamespace, DaNetworkConstants, DaSpec, DaVerifier,
     UpdatedDaState,
 };
 use sov_rollup_interface::zk::LightClientCircuitOutput;
@@ -14,7 +14,7 @@ use crate::helpers::parsers::{
 };
 use crate::helpers::{calculate_double_sha256, merkle_tree};
 use crate::spec::blob::BlobWithSender;
-use crate::spec::BitcoinSpec;
+use crate::spec::{BitcoinNetwork, BitcoinSpec};
 
 pub const WITNESS_COMMITMENT_PREFIX: &[u8] = &[0x6a, 0x24, 0xaa, 0x21, 0xa9, 0xed];
 
@@ -224,7 +224,7 @@ impl DaVerifier for BitcoinVerifier {
         &self,
         previous_light_client_proof_output: &Option<LightClientCircuitOutput<Self::Spec>>,
         block_header: &<Self::Spec as DaSpec>::BlockHeader,
-        _difficulty_constants: DaDifficultyConstants,
+        _difficulty_constants: DaNetworkConstants<BitcoinNetwork>,
     ) -> Result<UpdatedDaState<Self::Spec>, Self::Error> {
         // Check 1: Verify block hash
         if !block_header.verify_hash() {

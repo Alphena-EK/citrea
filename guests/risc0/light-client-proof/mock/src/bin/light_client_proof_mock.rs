@@ -3,7 +3,8 @@ use citrea_light_client_prover::circuit::run_circuit;
 use citrea_risc0_adapter::guest::Risc0Guest;
 use crypto_bigint::U256;
 use sov_mock_da::MockDaVerifier;
-use sov_rollup_interface::{da::DaDifficultyConstants, zk::ZkvmGuest};
+use sov_rollup_interface::da::DaNetworkConstants;
+use sov_rollup_interface::zk::ZkvmGuest;
 
 risc0_zkvm::guest::entry!(main);
 
@@ -20,11 +21,12 @@ const BATCH_PROVER_DA_PUBLIC_KEY: [u8; 33] = match const_hex::const_decode_to_ar
 };
 
 // bitcoin regtest
-const DA_DIFFICULTY_CONSTANTS: DaDifficultyConstants = DaDifficultyConstants {
+const DA_DIFFICULTY_CONSTANTS: DaNetworkConstants<()> = DaNetworkConstants {
     max_bits: 0x207FFFFF,
     max_target: U256::from_be_hex(
         "7FFFFF0000000000000000000000000000000000000000000000000000000000",
     ),
+    network: (),
 };
 
 pub fn main() {
