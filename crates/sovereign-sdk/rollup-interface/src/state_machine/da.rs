@@ -4,6 +4,7 @@ use alloc::vec::Vec;
 use core::fmt::Debug;
 
 use borsh::{BorshDeserialize, BorshSerialize};
+use crypto_bigint::U256;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 
@@ -50,6 +51,25 @@ pub struct UpdatedDaState<Spec: DaSpec> {
     pub prev_11_timestamps: [u32; 11],
     /// DA block target bits
     pub current_target_bits: u32,
+}
+
+/// Da network constants representing difficulty.
+#[derive(Debug, Clone, Copy)]
+pub struct DaDifficultyConstants {
+    /// Maximum bits of the chain
+    pub max_bits: u32,
+    /// Maximum target of the chain
+    pub max_target: U256,
+}
+
+#[cfg(feature = "testing")]
+impl Default for DaDifficultyConstants {
+    fn default() -> Self {
+        Self {
+            max_bits: 0,
+            max_target: U256::ZERO,
+        }
+    }
 }
 
 // TODO: rename to da service request smth smth
@@ -166,6 +186,7 @@ pub trait DaVerifier: Send + Sync {
         &self,
         previous_light_client_proof_output: &Option<LightClientCircuitOutput<Self::Spec>>,
         block_header: &<Self::Spec as DaSpec>::BlockHeader,
+        difficulty_constants: DaDifficultyConstants,
     ) -> Result<UpdatedDaState<Self::Spec>, Self::Error>;
 }
 

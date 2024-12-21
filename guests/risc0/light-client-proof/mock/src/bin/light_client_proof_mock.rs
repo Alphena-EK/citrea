@@ -1,8 +1,9 @@
 #![no_main]
 use citrea_light_client_prover::circuit::run_circuit;
 use citrea_risc0_adapter::guest::Risc0Guest;
+use crypto_bigint::U256;
 use sov_mock_da::MockDaVerifier;
-use sov_rollup_interface::zk::ZkvmGuest;
+use sov_rollup_interface::{da::DaDifficultyConstants, zk::ZkvmGuest};
 
 risc0_zkvm::guest::entry!(main);
 
@@ -18,6 +19,14 @@ const BATCH_PROVER_DA_PUBLIC_KEY: [u8; 33] = match const_hex::const_decode_to_ar
     Err(_) => panic!("Can't happen"),
 };
 
+// bitcoin regtest
+const DA_DIFFICULTY_CONSTANTS: DaDifficultyConstants = DaDifficultyConstants {
+    max_bits: 0x207FFFFF,
+    max_target: U256::from_be_hex(
+        "7FFFFF0000000000000000000000000000000000000000000000000000000000",
+    ),
+};
+
 pub fn main() {
     let guest = Risc0Guest::new();
 
@@ -25,7 +34,14 @@ pub fn main() {
 
     let input = guest.read_from_host();
 
-    let output = run_circuit::<MockDaVerifier, Risc0Guest>(da_verifier, input, L2_GENESIS_ROOT, BATCH_PROOF_METHOD_ID, &BATCH_PROVER_DA_PUBLIC_KEY).unwrap();
+    let output = run_circuit::<MockDaVerifier, Risc0Guest>(
+        da_verifier,
+        input,
+        L2_GENESIS_ROOT,
+        BATCH_PROOF_METHOD_ID,
+        &BATCH_PROVER_DA_PUBLIC_KEY,
+        DA_DIFFICULTY_CONSTANTS,
+    ).unwrap();
 
     guest.commit(&output);
 }

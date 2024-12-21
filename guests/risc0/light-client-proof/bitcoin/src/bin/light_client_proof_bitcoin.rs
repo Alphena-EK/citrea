@@ -4,7 +4,8 @@ use bitcoin_da::verifier::BitcoinVerifier;
 use citrea_light_client_prover::circuit::run_circuit;
 use citrea_primitives::{TO_BATCH_PROOF_PREFIX, TO_LIGHT_CLIENT_PREFIX};
 use citrea_risc0_adapter::guest::Risc0Guest;
-use sov_rollup_interface::da::DaVerifier;
+use crypto_bigint::U256;
+use sov_rollup_interface::da::{DaDifficultyConstants, DaVerifier};
 use sov_rollup_interface::zk::ZkvmGuest;
 use sov_rollup_interface::Network;
 
@@ -84,6 +85,37 @@ const BATCH_PROVER_DA_PUBLIC_KEY: [u8; 33] = {
     }
 };
 
+const DA_DIFFICULTY_CONSTANTS: DaDifficultyConstants = match NETWORK {
+    // bitcoin mainnet
+    Network::Mainnet => DaDifficultyConstants {
+        max_bits: 0x1D00FFFF,
+        max_target: U256::from_be_hex(
+            "00000000FFFF0000000000000000000000000000000000000000000000000000",
+        ),
+    },
+    // bitcoin testnet4
+    Network::Testnet => DaDifficultyConstants {
+        max_bits: 0x1D00FFFF,
+        max_target: U256::from_be_hex(
+            "00000000FFFF0000000000000000000000000000000000000000000000000000",
+        ),
+    },
+    // bitcoin signet
+    Network::Devnet => DaDifficultyConstants {
+        max_bits: 0x1E0377AE,
+        max_target: U256::from_be_hex(
+            "00000377AE000000000000000000000000000000000000000000000000000000",
+        ),
+    },
+    // bitcoin regtest
+    Network::Nightly => DaDifficultyConstants {
+        max_bits: 0x207FFFFF,
+        max_target: U256::from_be_hex(
+            "7FFFFF0000000000000000000000000000000000000000000000000000000000",
+        ),
+    },
+};
+
 pub fn main() {
     let guest = Risc0Guest::new();
 
@@ -94,7 +126,14 @@ pub fn main() {
 
     let input = guest.read_from_host();
 
-    let output = run_circuit::<BitcoinVerifier, Risc0Guest>(da_verifier, input, L2_GENESIS_ROOT, BATCH_PROOF_METHOD_ID, &BATCH_PROVER_DA_PUBLIC_KEY).unwrap();
+    let output = run_circuit::<BitcoinVerifier, Risc0Guest>(
+        da_verifier,
+        input,
+        L2_GENESIS_ROOT,
+        BATCH_PROOF_METHOD_ID,
+        &BATCH_PROVER_DA_PUBLIC_KEY,
+        DA_DIFFICULTY_CONSTANTS,
+    ).unwrap();
 
     guest.commit(&output);
 }

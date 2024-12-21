@@ -3112,6 +3112,7 @@ dependencies = [
  "async-trait",
  "borsh",
  "bytes",
+ "crypto-bigint",
  "digest 0.10.7",
  "hex",
  "serde",

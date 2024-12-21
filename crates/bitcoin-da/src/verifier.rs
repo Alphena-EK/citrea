@@ -3,7 +3,8 @@ use citrea_primitives::compression::decompress_blob;
 use crypto_bigint::{Encoding, U256};
 use itertools::Itertools;
 use sov_rollup_interface::da::{
-    BlobReaderTrait, BlockHeaderTrait, DaNamespace, DaSpec, DaVerifier, UpdatedDaState,
+    BlobReaderTrait, BlockHeaderTrait, DaDifficultyConstants, DaNamespace, DaSpec, DaVerifier,
+    UpdatedDaState,
 };
 use sov_rollup_interface::zk::LightClientCircuitOutput;
 
@@ -223,6 +224,7 @@ impl DaVerifier for BitcoinVerifier {
         &self,
         previous_light_client_proof_output: &Option<LightClientCircuitOutput<Self::Spec>>,
         block_header: &<Self::Spec as DaSpec>::BlockHeader,
+        _difficulty_constants: DaDifficultyConstants,
     ) -> Result<UpdatedDaState<Self::Spec>, Self::Error> {
         // Check 1: Verify block hash
         if !block_header.verify_hash() {
