@@ -7,7 +7,7 @@ use jsonrpsee::types::ErrorObjectOwned;
 use reth_primitives::{Address, Bytes, KECCAK_EMPTY, U256};
 use reth_rpc_eth_types::EthApiError;
 use reth_rpc_types::trace::geth::GethTrace;
-use reth_rpc_types::{BlockId, EIP1186StorageProof, JsonStorageKey};
+use reth_rpc_types::{BlockId, BlockNumberOrTag, EIP1186StorageProof, JsonStorageKey};
 use rustc_version_runtime::version;
 use schnellru::{ByLength, LruMap};
 use sequencer_client::SequencerClient;
@@ -119,9 +119,21 @@ where
         use sov_state::storage::{StateCodec, StorageKey};
 
         let evm = Evm::<C>::default();
+        let block_number = match block_id {
+            Some(BlockId::Number(block_num)) => block_num,
+            Some(BlockId::Hash(block_hash)) => {
+                let block_number = evm
+                    .get_block_number_by_block_hash(block_hash.block_hash, working_set)
+                    .ok_or_else(|| EthApiError::UnknownBlockOrTxIndex)?;
+                BlockNumberOrTag::Number(block_number)
+            }
+            None => BlockNumberOrTag::Latest,
+        };
+        let block_id_internal = evm.block_number_for_id(&block_number, working_set)?;
         evm.set_state_to_end_of_evm_block_by_block_id(block_id, working_set)?;
-        let block_id = evm.block_number(working_set)?;
-        let version: u64 = block_id
+
+        // let block_id = evm.block_number(working_set)?;
+        let version: u64 = block_id_internal
             .try_into()
             .map_err(|_| EthApiError::EvmCustom("Block id overflow".into()))?;
         let version = version + 1; // We need to set block_id to the end
