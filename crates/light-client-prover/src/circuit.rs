@@ -1,4 +1,4 @@
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
 use anyhow::anyhow;
 use borsh::BorshDeserialize;
@@ -58,7 +58,7 @@ pub fn run_circuit<DaV: DaVerifier, G: ZkvmGuest>(
         .map_err(|_| LightClientVerificationError::DaTxsCouldntBeVerified)?;
 
     // Mapping from initial state root to final state root and last L2 height
-    let mut initial_to_final = std::collections::BTreeMap::<[u8; 32], ([u8; 32], u64)>::new();
+    let mut initial_to_final = BTreeMap::<[u8; 32], ([u8; 32], u64)>::new();
 
     let (mut last_state_root, mut last_l2_height, l2_genesis_state_root, mut unprocessed_chunks) =
         previous_light_client_proof_output.as_ref().map_or_else(

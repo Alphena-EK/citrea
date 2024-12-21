@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use std::fmt::Debug;
 use std::sync::Arc;
 
@@ -83,6 +84,8 @@ pub struct StoredLightClientProofOutput {
     pub last_l2_height: u64,
     /// L2 genesis state root.
     pub l2_genesis_state_root: [u8; 32],
+    /// A list of unprocessed chunks
+    pub unprocessed_chunks: BTreeMap<[u8; 32], Vec<u8>>,
 }
 
 impl From<StoredLightClientProofOutput> for LightClientProofOutputRpcResponse {

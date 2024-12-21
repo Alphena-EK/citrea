@@ -283,6 +283,7 @@ where
             unchained_batch_proofs_info: circuit_output.unchained_batch_proofs_info,
             last_l2_height: circuit_output.last_l2_height,
             l2_genesis_state_root: circuit_output.l2_genesis_state_root,
+            unprocessed_chunks: circuit_output.unprocessed_chunks,
         };
 
         self.ledger_db.insert_light_client_proof_data_by_l1_height(
