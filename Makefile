@@ -1,5 +1,17 @@
-# The release tag of https://github.com/ethereum/tests to use for EF tests
-EF_TESTS_URL := https://github.com/chainwayxyz/ef-tests/archive/develop.tar.gz
+################################################################################
+# Makefile for Citrea / Sovereign SDK / RISC0 / SP1 Project
+# ------------------------------------------------------------------------------
+# This Makefile automates building, testing, linting, and installing dev tools
+# for a Rust-based project (using Cargo). The default target is "help," so
+# typing `make` alone will display available commands.
+################################################################################
+
+# ------------------------------------------------------------------------------
+# 1) Configuration Variables
+# ------------------------------------------------------------------------------
+# You can move these to a `config.mk` or a `.env` file if you prefer.
+
+EF_TESTS_URL ?= https://github.com/chainwayxyz/ef-tests/archive/develop.tar.gz
 EF_TESTS_DIR := crates/evm/ethereum-tests
 CITREA_E2E_TEST_BINARY := $(CURDIR)/target/debug/citrea
 PARALLEL_PROOF_LIMIT := 1
@@ -7,55 +19,112 @@ TEST_FEATURES := --features testing
 BATCH_OUT_PATH := resources/guests/risc0/
 LIGHT_OUT_PATH := resources/guests/risc0/
 
-.PHONY: help
-help: ## Display this help message
-	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
+# ------------------------------------------------------------------------------
+# 2) Default Target
+# ------------------------------------------------------------------------------
+.PHONY: default
+default: help
 
+# ------------------------------------------------------------------------------
+# 3) Help / Usage
+# ------------------------------------------------------------------------------
+.PHONY: help
+help: ## Display this help message (default target).
+	@echo "Usage: make [target]"
+	@echo
+	@awk 'BEGIN {FS = ":.*?## "} \
+		/^[a-zA-Z_-]+:.*?## / \
+		{printf "\033[36m%-25s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
+	@echo
+
+# ------------------------------------------------------------------------------
+# 4) Build Targets
+# ------------------------------------------------------------------------------
 .PHONY: build-risc0-docker
-build-risc0-docker:
+build-risc0-docker: ## Build Docker images for RISC0 (batch & light client)
 	$(MAKE) -C guests/risc0 batch-proof-bitcoin-docker OUT_PATH=$(BATCH_OUT_PATH)
 	$(MAKE) -C guests/risc0 light-client-bitcoin-docker OUT_PATH=$(LIGHT_OUT_PATH)
 
 .PHONY: build-sp1
-build-sp1:
+build-sp1: ## Build SP1 guest code
 	$(MAKE) -C guests/sp1 all
 
 .PHONY: build
-build: ## Build the project
+build: ## Build the project in debug mode
 	@cargo build
 
 .PHONY: build-test
-build-test: ## Build the project
+build-test: ## Build the project with testing features
 	@cargo build $(TEST_FEATURES)
 
+# Example: If you want to build release mode in parallel for RISC0 and SP1,
+# use `-j2`. However, be aware of potential race conditions if they share
+# the same Cargo `target/` directory.
+.PHONY: build-release
 build-release: build-risc0-docker build-sp1 ## Build the project in release mode
+	@$(MAKE) -j2 cargo-release-build
+
+.PHONY: cargo-release-build
+cargo-release-build:
 	@cargo build --release
 
-clean: ## Cleans compiled
+# ------------------------------------------------------------------------------
+# 5) Clean Targets
+# ------------------------------------------------------------------------------
+.PHONY: clean
+clean: ## Clean compiled files (Cargo 'target' folder)
 	@cargo clean
 
-clean-node: ## Cleans local dbs needed for sequencer and nodes
-	rm -rf resources/dbs/da-db
-	rm -rf resources/dbs/sequencer-db
-	rm -rf resources/dbs/batch-prover-db
-	rm -rf resources/dbs/light-client-prover-db
-	rm -rf resources/dbs/full-node-db
+.PHONY: clean-node
+clean-node: ## Remove local DBs for sequencer and nodes
+	@[ -d "resources/dbs/da-db" ] && rm -rf resources/dbs/da-db || true
+	@[ -d "resources/dbs/sequencer-db" ] && rm -rf resources/dbs/sequencer-db || true
+	@[ -d "resources/dbs/batch-prover-db" ] && rm -rf resources/dbs/batch-prover-db || true
+	@[ -d "resources/dbs/light-client-prover-db" ] && rm -rf resources/dbs/light-client-prover-db || true
+	@[ -d "resources/dbs/full-node-db" ] && rm -rf resources/dbs/full-node-db || true
 
-clean-txs:
-	rm -rf resources/bitcoin/inscription_txs/*
+.PHONY: clean-txs
+clean-txs: ## Remove Bitcoin inscription transactions
+	@[ -d "resources/bitcoin/inscription_txs" ] && rm -rf resources/bitcoin/inscription_txs/* || true
 
-clean-docker:
+.PHONY: clean-docker
+clean-docker: ## Clean Docker data for Citrea Bitcoin regtest
 	rm -rf resources/dbs/citrea-bitcoin-regtest-data
+	# Uncomment if you also want to remove containers/volumes:
+	# docker-compose down --volumes --remove-orphans
 
-clean-all: clean clean-node clean-txs
+.PHONY: clean-all
+clean-all: clean clean-node clean-txs clean-docker ## Clean all cached and generated data
 
-test-legacy: ## Runs test suite with output from tests printed
+# ------------------------------------------------------------------------------
+# 6) Test Targets
+# ------------------------------------------------------------------------------
+.PHONY: test-legacy
+test-legacy: ## Run the test suite with full output (legacy approach)
 	@cargo test -- --nocapture -Zunstable-options --report-time
 
-test: build-test $(EF_TESTS_DIR) ## Runs test suite using next test
-	RISC0_DEV_MODE=1 cargo nextest run --workspace --all-features --no-fail-fast $(filter-out $@,$(MAKECMDGOALS))
+# This test target uses Nextest and also includes the EF tests after downloading.
+.PHONY: test
+test: build-test $(EF_TESTS_DIR) ## Run tests using nextest & EF tests
+	RISC0_DEV_MODE=1 cargo nextest run --workspace --all-features --no-fail-fast \
+		$(filter-out $@,$(MAKECMDGOALS))
 
-install-dev-tools:  ## Installs all necessary cargo helpers
+# Download and unpack Ethereum Foundation tests in $(EF_TESTS_DIR)
+$(EF_TESTS_DIR):
+	mkdir -p $(EF_TESTS_DIR)
+	wget $(EF_TESTS_URL) -O ethereum-tests.tar.gz || { echo "Download failed"; exit 1; }
+	tar -xzf ethereum-tests.tar.gz --strip-components=1 -C $(EF_TESTS_DIR)
+	rm -f ethereum-tests.tar.gz
+
+.PHONY: ef-tests
+ef-tests: $(EF_TESTS_DIR) ## Run only Ethereum Foundation tests
+	cargo nextest run -p citrea-evm general_state_tests
+
+# ------------------------------------------------------------------------------
+# 7) Installation (Dev Tools) Targets
+# ------------------------------------------------------------------------------
+.PHONY: install-dev-tools
+install-dev-tools:  ## Install necessary Cargo helpers and dev environment
 	cargo install --locked dprint
 	cargo install cargo-llvm-cov
 	cargo install cargo-hack
@@ -67,78 +136,84 @@ install-dev-tools:  ## Installs all necessary cargo helpers
 	rustup component add llvm-tools-preview
 	$(MAKE) install-sp1
 
-install-risc0:
+.PHONY: install-risc0
+install-risc0: ## Install RISC0 cargo tools via cargo-binstall
 	cargo install --version 1.7.0 cargo-binstall
 	cargo binstall --no-confirm cargo-risczero@1.1.3
 	cargo risczero install --version r0.1.81.0
 
-install-sp1: ## Install necessary SP1 toolchain
+.PHONY: install-sp1
+install-sp1: ## Install the SP1 toolchain
 	curl -L https://sp1.succinct.xyz | bash
 	sp1up
 
-lint:  ## cargo check and clippy. Skip clippy on guest code since it's not supported by risc0
-	## fmt first, because it's the cheapest
+# ------------------------------------------------------------------------------
+# 8) Lint / Format / Coverage / Docs
+# ------------------------------------------------------------------------------
+.PHONY: lint
+lint: ## Check formatting, then run cargo check and clippy (skipping RISC0 guest code)
 	dprint check
 	cargo +nightly fmt --all --check
 	cargo check --all-targets --all-features
 	SKIP_GUEST_BUILD=1 cargo clippy --all-targets --all-features
 
-lint-fix:  ## dprint fmt, cargo fmt, fix and clippy. Skip clippy on guest code since it's not supported by risc0
+.PHONY: lint-fix
+lint-fix: ## Automatically fix formatting and clippy warnings where possible
 	dprint fmt
 	cargo +nightly fmt --all
 	cargo fix --allow-dirty
 	SKIP_GUEST_BUILD=1 cargo clippy --fix --allow-dirty
 
-check-features: ## Checks that project compiles with all combinations of features.
+.PHONY: coverage
+coverage: build-test $(EF_TESTS_DIR) ## Generate coverage in LCOV format
+	cargo llvm-cov --locked --lcov --output-path lcov.info nextest --workspace --all-features
+
+.PHONY: coverage-html
+coverage-html: ## Generate coverage report in HTML format
+	cargo llvm-cov --locked --all-features --html nextest --workspace --all-features
+
+.PHONY: docs
+docs:  ## Generate local documentation
+	cargo doc --open
+
+# ------------------------------------------------------------------------------
+# 9) Additional Checks and Features
+# ------------------------------------------------------------------------------
+.PHONY: check-features
+check-features: ## Check that the project compiles with all feature combinations
 	cargo hack check --workspace --feature-powerset --exclude-features default --all-targets
 
-check-no-std: ## Checks that project compiles without std
+.PHONY: check-no-std
+check-no-std: ## Check that the project compiles without std
 	$(MAKE) -C crates/sovereign-sdk/rollup-interface $@
 	$(MAKE) -C crates/sovereign-sdk/module-system/sov-modules-core $@
 
-find-unused-deps: ## Prints unused dependencies for project. Note: requires nightly
+.PHONY: find-unused-deps
+find-unused-deps: ## Print unused dependencies (requires nightly)
 	cargo +nightly udeps --all-targets --all-features
 
-find-flaky-tests:  ## Runs tests over and over to find if there's flaky tests
+.PHONY: find-flaky-tests
+find-flaky-tests:  ## Run tests repeatedly to detect flaky tests
 	flaky-finder -j16 -r320 --continue "cargo test -- --nocapture"
 
-coverage: build-test $(EF_TESTS_DIR) ## Coverage in lcov format
-	cargo llvm-cov --locked --lcov --output-path lcov.info nextest --workspace --all-features
+# ------------------------------------------------------------------------------
+# 10) Other Targets (Genesis, PR checks, etc.)
+# ------------------------------------------------------------------------------
+.PHONY: genesis
+genesis: ## Generate genesis from system contract source files
+	$(MAKE) -C crates/evm/src/evm/system_contracts genesis
 
-coverage-html: ## Coverage in HTML format
-	cargo llvm-cov --locked --all-features --html nextest --workspace --all-features
+.PHONY: genesis-prod
+genesis-prod: ## Generate production genesis from system contract source files
+	$(MAKE) -C crates/evm/src/evm/system_contracts genesis-prod
 
-docs:  ## Generates documentation locally
-	cargo doc --open
-
-set-git-hook:
-	git config core.hooksPath .githooks
-
-# Downloads and unpacks Ethereum Foundation tests in the `$(EF_TESTS_DIR)` directory.
-#
-# Requires `wget` and `tar`
-$(EF_TESTS_DIR):
-	mkdir $(EF_TESTS_DIR)
-	wget $(EF_TESTS_URL) -O ethereum-tests.tar.gz
-	tar -xzf ethereum-tests.tar.gz --strip-components=1 -C $(EF_TESTS_DIR)
-	rm ethereum-tests.tar.gz
-
-.PHONY: ef-tests
-ef-tests: $(EF_TESTS_DIR) ## Runs Ethereum Foundation tests.
-	cargo nextest run -p citrea-evm general_state_tests
-
-%:
-	@:
-
-# Basic checks to do before opening a PR
-pr:
+.PHONY: pr
+pr: ## Perform basic checks before opening a Pull Request
 	$(MAKE) lint
 	$(MAKE) test
 
-# Set genesis from system contract source files
-genesis:
-	$(MAKE) -C crates/evm/src/evm/system_contracts genesis
+# This rule does nothing; it prevents errors when passing extra arguments
+# via "make target ARG1 ARG2".
+%:
+	@:
 
-# Set production genesis from system contract source files
-genesis-prod:
-	$(MAKE) -C crates/evm/src/evm/system_contracts genesis-prod
