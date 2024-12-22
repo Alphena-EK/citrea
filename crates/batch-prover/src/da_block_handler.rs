@@ -11,21 +11,20 @@ use citrea_common::da::get_da_block_at_height;
 use citrea_common::utils::merge_state_diffs;
 use citrea_common::BatchProverConfig;
 use citrea_primitives::compression::compress_blob;
-use citrea_primitives::forks::FORKS;
+use citrea_primitives::forks::fork_from_block_number;
 use citrea_primitives::MAX_TXBODY_SIZE;
 use rand::Rng;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use sov_db::ledger_db::BatchProverLedgerOps;
 use sov_db::schema::types::{SlotNumber, SoftConfirmationNumber};
-use sov_modules_api::fork::fork_from_block_number;
 use sov_modules_api::{DaSpec, StateDiff, Zkvm};
 use sov_rollup_interface::da::{BlockHeaderTrait, SequencerCommitment};
 use sov_rollup_interface::services::da::{DaService, SlotData};
 use sov_rollup_interface::soft_confirmation::SignedSoftConfirmation;
 use sov_rollup_interface::spec::SpecId;
 use sov_rollup_interface::zk::ZkvmHost;
-use sov_stf_runner::ProverService;
+use sov_stf_runner::{ProverGuestRunConfig, ProverService};
 use tokio::select;
 use tokio::sync::{mpsc, Mutex};
 use tokio::time::{sleep, Duration};
@@ -239,11 +238,18 @@ where
                 l1_block.header().height(),
             );
 
-            // if proof_sampling_number is 0, then we always prove and submit
-            // otherwise we submit and prove with a probability of 1/proof_sampling_number
-            let should_prove = self.prover_config.proof_sampling_number == 0
-                || rand::thread_rng().gen_range(0..self.prover_config.proof_sampling_number) == 0;
-
+            let should_prove = match self.prover_config.proving_mode {
+                ProverGuestRunConfig::ProveWithFakeProofs => {
+                    // Unconditionally call `prove_l1()`
+                    true
+                }
+                _ => {
+                    // Call `prove_l1()` with a probability
+                    self.prover_config.proof_sampling_number == 0
+                        || rand::thread_rng().gen_range(0..self.prover_config.proof_sampling_number)
+                            == 0
+                }
+            };
             if should_prove {
                 if l1_height >= self.skip_submission_until_l1 {
                     prove_l1::<Da, Ps, Vm, DB, StateRoot, Witness, Tx>(
@@ -442,7 +448,7 @@ pub(crate) fn break_sequencer_commitments_into_groups<DB: BatchProverLedgerOps>(
         .first()
         .ok_or(anyhow!("No Sequencer commitments found"))?
         .l2_start_block_number;
-    let mut current_spec = fork_from_block_number(FORKS, first_block_number).spec_id;
+    let mut current_spec = fork_from_block_number(first_block_number).spec_id;
 
     let mut range = 0usize..=0usize;
     let mut cumulative_state_diff = StateDiff::new();
@@ -472,7 +478,7 @@ pub(crate) fn break_sequencer_commitments_into_groups<DB: BatchProverLedgerOps>(
         let state_diff_threshold_reached = compressed_state_diff.len() > MAX_TXBODY_SIZE;
 
         let commitment_spec =
-            fork_from_block_number(FORKS, sequencer_commitment.l2_end_block_number).spec_id;
+            fork_from_block_number(sequencer_commitment.l2_end_block_number).spec_id;
 
         if commitment_spec != current_spec || state_diff_threshold_reached {
             result_range.push(range);
